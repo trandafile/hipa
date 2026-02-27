@@ -1,0 +1,9 @@
+# HFSS e Simulazione
+*.aedtresults/
+*.results/
+*.lock
+*.auto
+*.semaphore
+*.asol
+*.log
+nul
