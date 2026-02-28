@@ -1,5 +1,9 @@
 import streamlit as st
 import datetime
+from dotenv import load_dotenv
+
+# Carica esplicitamente il .env per testing locale
+load_dotenv()
 
 # Configure main page BEFORE any other Streamlit calls
 st.set_page_config(
@@ -8,6 +12,22 @@ st.set_page_config(
     layout="wide"
 )
 
+# Custom CSS for blinking notification
+st.markdown("""
+    <style>
+    @keyframes blink {
+        0% { opacity: 1; }
+        50% { opacity: 0.2; }
+        100% { opacity: 1; }
+    }
+    .blink-icon {
+        animation: blink 1.2s infinite;
+        font-size: 1.3rem;
+        vertical-align: middle;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # Import internal modules
 from core.auth import check_login, logout
 from core.google_api import g_api
@@ -15,6 +35,7 @@ from forms.dashboard import show_dashboard
 from forms.profilo import show_profilo
 from forms.acquisti import show_acquisti_form
 from forms.contratti import show_contratti_form
+from forms.dettaglio import show_dettaglio_pratica
 
 def init_session_state():
     """Inizializza tutte le chiavi necessarie nello stato della sessione per evitare KeyError"""
@@ -72,20 +93,27 @@ def show_first_login_form():
                  # Salva su Google Sheets nel foglio 'Utenti'
                  # Colonne attese: ID, Email, Nome, Cognome, Data_Nascita, Luogo_Nascita, Ruolo_Accademico, Ruolo_Sistema
                  users_data = g_api.get_sheet_data('Utenti')
-                 new_id = len(users_data) + 1 # Generazione ID molto basic
                  
-                 new_row = [
-                     new_id, 
-                     st.session_state['user_email'],
-                     nome,
-                     cognome,
-                     str(data_nascita),
-                     luogo_nascita,
-                     ruolo_accademico,
-                     "Richiedente" # Ruolo_Sistema base assegnato
-                 ]
+                 # Double check per evitare duplicati se l'utente clicca più volte o ricarica
+                 exists = any(str(u.get('Email', '')).lower() == st.session_state['user_email'].lower() for u in users_data)
                  
-                 success = g_api.append_row('Utenti', new_row)
+                 if not exists:
+                     new_id = len(users_data) + 1 # Generazione ID molto basic
+                     
+                     new_row = [
+                         new_id, 
+                         st.session_state['user_email'],
+                         nome,
+                         cognome,
+                         str(data_nascita),
+                         luogo_nascita,
+                         ruolo_accademico,
+                         "Richiedente" # Ruolo_Sistema base assegnato
+                     ]
+                     
+                     success = g_api.append_row('Utenti', new_row)
+                 else:
+                     success = True # Consideriamolo un successo se esiste già
                  if success:
                      st.session_state['first_login'] = False
                      st.session_state['user_role'] = 'Richiedente'
@@ -117,13 +145,22 @@ def main():
               st.markdown(f"**Ruolo:** {st.session_state.get('user_role')}")
               st.markdown("---")
               
-              pages = ["Dashboard", "Il mio Profilo", "Nuova Pratica"]
+              pages = ["Dashboard", "Pannello Richiedente", "Il mio Profilo", "Nuova Pratica"]
               
-              if st.session_state['user_role'] in ['Admin', 'Dispatcher']:
+              # Pannello Operatore per lavoratori (Worker/Dispatcher) e Admin (per test)
+              if st.session_state['user_role'] in ['Worker', 'Dispatcher', 'Admin']:
+                  pages.append("Pannello Operatore")
+              
+              # Pannello Admin solo per Admin
+              if st.session_state['user_role'] == 'Admin':
                   pages.append("Pannello Admin")
                   
-              choice = st.radio("Navigazione", pages)
-              st.session_state['current_page'] = choice
+              st.markdown("**Navigazione**")
+              current = st.session_state.get('current_page', 'Dashboard')
+              for p in pages:
+                  if st.button(p, key=f"nav_{p}", use_container_width=True, type="primary" if current == p else "secondary"):
+                      st.session_state['current_page'] = p
+                      st.rerun()
               
               st.markdown("---")
               if st.button("Logout"):
@@ -131,8 +168,28 @@ def main():
 
          # Content Switcher
          page = st.session_state.get('current_page', 'Dashboard')
+         
          if page == "Dashboard":
-              show_dashboard()
+              from forms.dashboard import show_home_dashboard
+              show_home_dashboard()
+              
+         elif page == "Pannello Richiedente":
+              from forms.dashboard import show_richiedente_dashboard
+              show_richiedente_dashboard(st.session_state['user_email'])
+         
+         # Pannello operatore esplicito (per lavorare le proprie pratiche)
+         elif page == "Pannello Operatore":
+              from forms.dashboard import show_worker_dashboard
+              show_worker_dashboard(st.session_state['user_email'])
+              
+         # Pannello admin esplicito (supervisione)
+         elif page == "Pannello Admin":
+              from forms.dashboard import show_admin_dashboard
+              show_admin_dashboard()
+
+         elif page == "Dettaglio Pratica":
+              show_dettaglio_pratica()
+
          elif page == "Il mio Profilo":
               show_profilo()
          elif page == "Nuova Pratica":

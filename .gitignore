@@ -6,4 +6,20 @@
 *.semaphore
 *.asol
 *.log
-nul
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+
+# Sincronizzazione ed Extra
+.env
+credenziali-bot.json
+test_generazione.pdf
+*.pdf
+.streamlit/
+test_api_result.txt
+test_result.txt

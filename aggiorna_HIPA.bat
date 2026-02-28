@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 color 0A
 
 echo ==========================================
-echo    AGGIORNAMENTO AUTOMATICO GITHUB (THUAJ)
+echo    AGGIORNAMENTO AUTOMATICO GITHUB (HIPA)
 echo ==========================================
 echo/
 
@@ -67,7 +67,7 @@ if errorlevel 1 goto ERRORE
 REM --- GESTIONE ISSUE TRAMITE API GITHUB ---
 echo/
 echo [2/4] Controllo Issue aperte su GitHub...
-powershell -Command "$token='%GITHUB_TOKEN%'; $headers=@{}; if($token -ne ''){ $headers['Authorization']='Bearer '+$token }; $response = Invoke-RestMethod -Uri 'https://api.github.com/repos/trandafile/thuaj/issues?state=open' -Headers $headers -ErrorAction SilentlyContinue; if($response){ Write-Host '--- ISSUE APERTE ---' -ForegroundColor Cyan; foreach($issue in $response){ Write-Host \"[#$($issue.number)] $($issue.title)\" } Write-Host '--------------------' -ForegroundColor Cyan} else { Write-Host 'Nessuna issue trovata (o repo privato senza token configurato).' -ForegroundColor Yellow }"
+powershell -Command "$token='%GITHUB_TOKEN%'; $headers=@{}; if($token -ne ''){ $headers['Authorization']='Bearer '+$token }; $response = Invoke-RestMethod -Uri 'https://api.github.com/repos/trandafile/hipa/issues?state=open' -Headers $headers -ErrorAction SilentlyContinue; if($response){ Write-Host '--- ISSUE APERTE ---' -ForegroundColor Cyan; foreach($issue in $response){ Write-Host \"[#$($issue.number)] $($issue.title)\" } Write-Host '--------------------' -ForegroundColor Cyan} else { Write-Host 'Nessuna issue trovata (o repo privato senza token configurato).' -ForegroundColor Yellow }"
 
 echo/
 set "issue_suffix="

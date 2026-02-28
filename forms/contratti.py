@@ -2,19 +2,34 @@ import streamlit as st
 import datetime
 import json
 from core.google_api import g_api
+from forms.dashboard import autoassegna_operatore
 
 def show_contratti_form(progetti_disp):
     st.header("Form: Nuova Richiesta di Contratto")
     
-    opzioni_progetti = ["-- Seleziona un Progetto --"] + [f"{p['Nome_Progetto']} ({p['Acronimo']}) - CUP: {p['CUP']}" for p in progetti_disp]
+    # Flag per gestire lo stato post-invio
+    if 'contratto_success_id' in st.session_state:
+        st.success(f"Pratica {st.session_state['contratto_success_id']} registrata con successo!")
+        if st.button("Torna alla Dashboard"):
+            del st.session_state['contratto_success_id']
+            st.session_state['current_page'] = "Pannello Richiedente"
+            st.rerun()
+        st.info("Vuoi inviare un'altra richiesta? Compila il form qui sotto.")
+        st.divider()
+
+    # Prepara la lista progetti (Dropdown)
+    opzioni_progetti = ["-- Seleziona un Progetto --"] + [f"{p['Nome_Progetto']} - CUP: {p.get('Codice_CUP', 'N/D')}" for p in progetti_disp]
     
+    pending_submit = None
+
     with st.form("richiesta_contratto_form"):
-        st.subheader("1. Riferimenti Finanziari")
+        st.subheader("1. Informazioni Generali")
+        titolo = st.text_input("Titolo Pratica (Breve)")
         progetto_sel = st.selectbox("Progetto di afferenza", opzioni_progetti)
         
         st.subheader("2. Dettagli Contratto")
-        contraente = st.text_input("Soggetto Contraente/Azienda", required=True)
-        oggetto = st.text_area("Oggetto del Contratto (dettagliato)", required=True)
+        contraente = st.text_input("Soggetto Contraente/Azienda")
+        oggetto = st.text_area("Oggetto del Contratto (dettagliato)")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -35,13 +50,18 @@ def show_contratti_form(progetti_disp):
         invio = st.form_submit_button("Invia Pratica", type="primary")
 
         if invio:
-             if progetto_sel == opzioni_progetti[0]:
+             if not titolo:
+                  st.error("Il Titolo della Pratica è obbligatorio.")
+             elif progetto_sel == opzioni_progetti[0]:
                   st.error("Devi selezionare un progetto.")
              elif not contraente or not oggetto:
                   st.error("I campi Contraente e Oggetto sono obbligatori.")
              else:
-                  # Costruisci il JSON per i Dati Dinamici Form
-                  dati_json = {
+                  # Estrai acronimo
+                  acronimo = progetto_sel.split(" - CUP:")[0]
+                  pending_submit = {
+                      "titolo": titolo,
+                      "progetto_acronimo": acronimo,
                       "progetto_string": progetto_sel,
                       "contraente": contraente,
                       "oggetto": oggetto,
@@ -50,8 +70,12 @@ def show_contratti_form(progetti_disp):
                       "tipo_contratto": tipo_contratto,
                       "note_aggiuntive": note_aggiuntive
                   }
-                  
-                  salva_pratica_contratto("Contratti", dati_json)
+
+    if pending_submit:
+        new_id = salva_pratica_contratto("Contratti", pending_submit)
+        if new_id:
+            st.session_state['contratto_success_id'] = new_id
+            st.rerun()
 
 def salva_pratica_contratto(tipo: str, dati_json: dict):
     pratiche_data = g_api.get_sheet_data('Pratiche')
@@ -60,16 +84,22 @@ def salva_pratica_contratto(tipo: str, dati_json: dict):
     email_richiedente = st.session_state['user_email']
     
     # 1. Row to append in 'Pratiche'
+    # ["ID_Pratica", "Tipo", "Email_Richiedente", "Oggetto", "Importo", "Stato_Attuale", "Data_Creazione", "Email_Operatore", "Note_Condivise", "JSON_Dati"]
+    op_assegnato = autoassegna_operatore(tipo)
+
     row_pratica = [
          new_id,
-         email_richiedente,
-         "", # Email_Operatore
          tipo,
+         email_richiedente,
+         dati_json.get("progetto_acronimo", ""),
+         dati_json.get("titolo", dati_json.get("oggetto", "")),
+         dati_json.get("importo_netto", 0.0), # Per i contratti usiamo il netto come riferimento principale
          "Nuova Inserita", # Stato Attuale
-         json.dumps(dati_json, ensure_ascii=False),
-         "", # Note_Condivise vuote all'inizio
          data_creazione,
-         "" # Link ZIP vuoto
+         op_assegnato, # Email_Operatore (auto-assegnato o vuoto)
+         "", # Note_Condivise vuote all'inizio
+         json.dumps(dati_json, ensure_ascii=False),
+         "" # Notifica_Nota
     ]
     
     # 2. Row to append in 'Storico_Fasi'
@@ -78,14 +108,12 @@ def salva_pratica_contratto(tipo: str, dati_json: dict):
     row_storico = [
          hist_id,
          new_id,
-         "Inserimento Iniziale", # Fase
+         "Nuova Inserita",
          data_creazione,
-         "", # Data Fine Vuota
-         "FALSE" # Sospensione
+         "",
+         "Inserimento Iniziale"
     ]
     
     if g_api.append_row('Pratiche', row_pratica) and g_api.append_row('Storico_Fasi', row_storico):
-         st.success(f"Pratica di tipo Contratto ({new_id}) registrata con successo! Verrai rediretto alla dashboard.")
-         if st.button("Torna alla Dashboard"):
-               st.session_state['current_page'] = "Dashboard"
-               st.rerun()
+         return new_id
+    return None
