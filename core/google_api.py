@@ -14,7 +14,7 @@ SCOPES = [
 
 # Definizione delle intestazioni per ogni foglio del database
 REQUIRED_SHEETS = {
-    'Utenti': ["ID", "Email", "Nome", "Cognome", "Data_Nascita", "Luogo_Nascita", "Ruolo_Accademico", "Ruolo_Sistema"],
+    'Utenti': ["ID", "Email", "Nome", "Cognome", "Data_Nascita", "Luogo_Nascita", "Ruolo_Accademico", "Ruolo_Sistema", "Stato"],
     'Progetti_Utenti': ["ID", "Email_Utente", "Nome_Progetto", "Codice_CUP", "Responsabile_Scientifico"],
     'Pratiche': ["ID_Pratica", "Tipo", "Email_Richiedente", "Progetto", "Oggetto", "Importo", "Stato_Attuale", "Data_Creazione", "Email_Operatore", "Note_Condivise", "JSON_Dati", "Notifica_Nota"],
     'Storico_Fasi': ["ID_Fase", "ID_Pratica", "Stato", "Data_Inizio", "Data_Fine", "Note"],

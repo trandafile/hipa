@@ -46,7 +46,8 @@ def init_session_state():
         'user_family_name': None,
         'user_role': None,         # Verrà recuperato dal DB
         'first_login': False,      # Se vero, mostra form anagrafica
-        'current_page': 'Dashboard'
+        'current_page': 'Dashboard',
+        'waiting_approval': False
     }
     for k, v in keys_default.items():
         if k not in st.session_state:
@@ -62,10 +63,15 @@ def verify_user_in_db():
     
     if not user_record:
         st.session_state['first_login'] = True
-        st.session_state['user_role'] = 'Richiedente' # Ruolo base
+        st.session_state['user_role'] = 'Richiedente'
     else:
         st.session_state['first_login'] = False
-        st.session_state['user_role'] = user_record.get('Ruolo_Sistema', 'Richiedente')
+        stato = user_record.get('Stato', 'Attivo') # Fallback per sicurezza
+        if stato == 'In Attesa':
+            st.session_state['waiting_approval'] = True
+        else:
+            st.session_state['waiting_approval'] = False
+            st.session_state['user_role'] = user_record.get('Ruolo_Sistema', 'Richiedente')
 
 def show_first_login_form():
     """Mostra un form per far inserire i dati anagrafici al primo accesso."""
@@ -108,19 +114,20 @@ def show_first_login_form():
                          str(data_nascita),
                          luogo_nascita,
                          ruolo_accademico,
-                         "Richiedente" # Ruolo_Sistema base assegnato
+                         "Richiedente", # Ruolo_Sistema base assegnato
+                         "In Attesa"    # Stato: richiede approvazione
                      ]
                      
                      success = g_api.append_row('Utenti', new_row)
                  else:
                      success = True # Consideriamolo un successo se esiste già
                  if success:
-                     st.session_state['first_login'] = False
-                     st.session_state['user_role'] = 'Richiedente'
-                     st.session_state['user_given_name'] = nome
-                     st.session_state['user_family_name'] = cognome
-                     st.success("Profilo completato! Ricaricamento in corso...")
-                     st.rerun()
+                                   st.session_state['first_login'] = False
+                                   st.session_state['waiting_approval'] = True
+                                   st.session_state['user_given_name'] = nome
+                                   st.session_state['user_family_name'] = cognome
+                                   st.success("Richiesta inviata con successo! Sarai abilitato al termine delle verifiche amministrative.")
+                                   st.rerun()
 
 def main():
     init_session_state()
@@ -138,6 +145,13 @@ def main():
     # Router interno
     if st.session_state.get('first_login'):
          show_first_login_form()
+    elif st.session_state.get('waiting_approval'):
+         st.warning("⏳ Accesso in attesa di approvazione")
+         st.write(f"Gentile {st.session_state.get('user_given_name')}, la tua richiesta di accesso al sistema HipA è stata registrata.")
+         st.write("Un amministratore deve verificare e approvare il tuo account prima che tu possa accedere alle funzionalità del portale.")
+         st.info("Riceverai una notifica o potrai riprovare l'accesso più tardi.")
+         if st.button("Logout"):
+              logout()
     else:
          # Costruzione della Sidebar per la navigazione
          with st.sidebar:
