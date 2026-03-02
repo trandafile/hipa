@@ -4,6 +4,39 @@ import datetime
 import json
 from core.google_api import g_api
 
+def autoassegna_operatore(tipo: str) -> str:
+    """Sceglie automaticamente l'operatore con meno carico per una tipologia di pratica.
+    Legge la lista di operatori autorizzati da Impostazioni_Sistema (chiave AutoAssign_<tipo>).
+    Ritorna l'email dell'operatore scelto o stringa vuota se non configurato.
+    """
+    try:
+        impostazioni = g_api.get_sheet_data('Impostazioni_Sistema')
+        chiave = f"AutoAssign_{tipo}"
+        valore = next((i['Valore'] for i in impostazioni if i['Chiave'] == chiave), None)
+        if not valore:
+            return ""
+        
+        ops_list = json.loads(valore) if valore.startswith('[') else []
+        if not ops_list:
+            return ""
+        
+        # Conta pratiche attive per operatore e sceglie quello col minor carico
+        pratiche_data = g_api.get_sheet_data('Pratiche')
+        carico = {op: 0 for op in ops_list}
+        for p in pratiche_data:
+            op_email = str(p.get('Email_Operatore', '')).lower()
+            stato = p.get('Stato_Attuale', '')
+            if op_email in [o.lower() for o in ops_list] and stato not in ['Conclusa', 'Archiviata']:
+                # Trova email originale (case-sensitive)
+                for op in ops_list:
+                    if op.lower() == op_email:
+                        carico[op] = carico.get(op, 0) + 1
+        
+        # Ritorna l'operatore con meno carico
+        return min(carico, key=carico.get)
+    except Exception:
+        return ""
+
 def calcola_sla(data_creazione_str, stato_attuale, tipo_pratica, conf_sla):
     try:
         if not data_creazione_str or stato_attuale in ['Conclusa', 'Archiviata']:
