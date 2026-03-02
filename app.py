@@ -1,9 +1,10 @@
 import streamlit as st
 import datetime
-from dotenv import load_dotenv
-
-# Carica esplicitamente il .env per testing locale
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Carica .env in locale (su Streamlit Cloud si usano st.secrets)
+except ImportError:
+    pass  # Su Streamlit Cloud dotenv non è necessario
 
 # Configure main page BEFORE any other Streamlit calls
 st.set_page_config(
