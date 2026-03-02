@@ -51,36 +51,41 @@ class GoogleAPI:
         return cls._instance
 
     def _initialize(self):
-        """Inizializza le connessioni gspread e Drive API usando le credenziali"""
+        """Inizializza le connessioni gspread e Drive API usando le credenziali.
+        NOTA: non chiama st.warning/st.error qui perché questo metodo viene eseguito
+        a tempo di import del modulo (g_api = GoogleAPI()) e Streamlit non è ancora
+        pronto. Gli errori vengono salvati in self._init_error e mostrati in seguito.
+        """
         self.creds = None
         self.client = None
         self.doc = None
         self.drive_service = None
-        
-        # 1. Recupera credenziali Service Account
-        creds_info = get_secret("gcp_service_account")
+        self._init_error = None
         
         try:
+            # 1. Recupera credenziali Service Account
+            creds_info = get_secret("gcp_service_account")
+            
             if creds_info:
                 if isinstance(creds_info, str):
                     try:
                         creds_info = json.loads(creds_info)
                         self.creds = Credentials.from_service_account_info(creds_info, scopes=SCOPES)
-                    except:
-                        # Se è una stringa ma non JSON, potrebbe essere il path del file
+                    except Exception:
                         if os.path.exists(creds_info):
-                             self.creds = Credentials.from_service_account_file(creds_info, scopes=SCOPES)
+                            self.creds = Credentials.from_service_account_file(creds_info, scopes=SCOPES)
                 else:
-                    self.creds = Credentials.from_service_account_info(creds_info, scopes=SCOPES)
+                    # Dizionario TOML da st.secrets
+                    self.creds = Credentials.from_service_account_info(dict(creds_info), scopes=SCOPES)
             
-            # Fallback a GOOGLE_APPLICATION_CREDENTIALS se non trovato sopra
+            # Fallback a GOOGLE_APPLICATION_CREDENTIALS
             if not self.creds:
-                 sa_path = get_secret("GOOGLE_APPLICATION_CREDENTIALS")
-                 if sa_path and os.path.exists(sa_path):
-                      self.creds = Credentials.from_service_account_file(sa_path, scopes=SCOPES)
+                sa_path = get_secret("GOOGLE_APPLICATION_CREDENTIALS")
+                if sa_path and os.path.exists(sa_path):
+                    self.creds = Credentials.from_service_account_file(sa_path, scopes=SCOPES)
 
             if not self.creds:
-                st.warning("Credenziali Google Service Account non trovate. Verifica .env o secrets.")
+                self._init_error = "Credenziali Google Service Account non trovate. Verifica secrets."
                 return
             
             # Setup ID
@@ -88,8 +93,8 @@ class GoogleAPI:
             self.drive_folder_id = get_secret("GOOGLE_DRIVE_FOLDER_ID")
             
             if not self.sheet_id:
-                 st.warning("GOOGLE_SHEET_ID non impostato.")
-                 return
+                self._init_error = "GOOGLE_SHEET_ID non impostato nei secrets."
+                return
 
             # Inizializza client
             self.client = gspread.authorize(self.creds)
@@ -97,7 +102,14 @@ class GoogleAPI:
             self.drive_service = build('drive', 'v3', credentials=self.creds)
             
         except Exception as e:
-            st.error(f"Errore durante l'inizializzazione delle API di Google: {e}")
+            self._init_error = f"Errore inizializzazione API Google: {e}"
+
+    def _check_init(self):
+        """Mostra errori di inizializzazione nell'UI Streamlit (chiamato lazy, non a import time)."""
+        if self._init_error:
+            st.warning(f"⚠️ {self._init_error}")
+            return False
+        return True
 
     # --- METODI GOOGLE SHEETS ---
 
@@ -337,4 +349,10 @@ class GoogleAPI:
              return None
 
 # Istanzia un oggetto globale (Singleton)
-g_api = GoogleAPI()
+# Protetto da try/except per evitare KeyError in sys.modules su Streamlit Cloud
+try:
+    g_api = GoogleAPI()
+except Exception as _e:
+    import traceback as _tb
+    print(f"[google_api] ERRORE CRITICO init: {_e}\n{_tb.format_exc()}")
+    g_api = None
