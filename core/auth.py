@@ -20,12 +20,10 @@ def get_secret(key, default=None):
     if val is not None:
         return val
         
-    # 2. Prova st.secrets SOLO se siamo su Streamlit Cloud o se il file esiste,
-    # per evitare che Streamlit stampi fastidiosi avvisi rossi in locale.
+    # 2. Prova st.secrets (funziona su Streamlit Cloud e in locale con secrets.toml)
     try:
-        if os.path.exists(".streamlit/secrets.toml") or os.environ.get("STREAMLIT_SERVER_GATHER_USAGE_STATS") is not None:
-             return st.secrets.get(key, default)
-    except Exception:
+        return st.secrets[key]
+    except (KeyError, FileNotFoundError, Exception):
         pass
     
     return default

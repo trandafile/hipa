@@ -32,7 +32,6 @@ st.markdown("""
 # Import internal modules
 from core.auth import check_login, logout
 from core.google_api import g_api
-from forms.dashboard import show_dashboard
 from forms.profilo import show_profilo
 from forms.acquisti import show_acquisti_form
 from forms.contratti import show_contratti_form

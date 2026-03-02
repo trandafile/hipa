@@ -25,17 +25,18 @@ REQUIRED_SHEETS = {
 }
 
 def get_secret(key, default=None):
-    """Accede in modo sicuro a st.secrets o env"""
-    # 1. Priorità alle variabili d'ambiente
+    """Accede in modo sicuro a st.secrets o variabili d'ambiente.
+    Funziona sia in locale (con .env o .streamlit/secrets.toml) che su Streamlit Cloud.
+    """
+    # 1. Priorità alle variabili d'ambiente (locale con .env)
     val = os.environ.get(key)
     if val is not None:
         return val
         
-    # 2. Prova st.secrets solo se il file esiste
+    # 2. Prova st.secrets (funziona su Streamlit Cloud e in locale con secrets.toml)
     try:
-        if os.path.exists(".streamlit/secrets.toml"):
-             return st.secrets.get(key, default)
-    except Exception:
+        return st.secrets[key]
+    except (KeyError, FileNotFoundError, Exception):
         pass
         
     return default
