@@ -70,18 +70,29 @@ def init_oauth_flow():
     return flow
 
 def login_button():
-    """Genera il bottone di Login per avviare il flusso OAuth."""
-    flow = init_oauth_flow()
-    if not flow:
-        st.error("❌ Impossibile inizializzare il flusso OAuth. Controlla i secrets (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET).")
+    """Genera il bottone di Login per avviare il flusso OAuth.
+    Costruisce l'URL manualmente per garantire che tutti i parametri siano corretti.
+    """
+    import urllib.parse
+    
+    client_id = get_secret("GOOGLE_CLIENT_ID")
+    redirect_uri = get_secret("GOOGLE_REDIRECT_URI", "http://localhost:8501")
+    
+    if not client_id:
+        st.error("❌ GOOGLE_CLIENT_ID non trovato nei secrets.")
         return
 
-    auth_url, _ = flow.authorization_url(prompt='consent', access_type='online')
-    
-    # DEBUG TEMPORANEO — mostra i primi caratteri dell'URL generato
-    with st.expander("🔍 Debug URL OAuth (rimuovere dopo il test)"):
-        st.code(auth_url[:200])
-    
+    # Costruzione manuale dell'URL per evitare bug della libreria con lo scope
+    params = {
+        'client_id': client_id,
+        'redirect_uri': redirect_uri,
+        'response_type': 'code',
+        'scope': 'openid email profile',
+        'prompt': 'consent',
+        'access_type': 'online',
+    }
+    auth_url = 'https://accounts.google.com/o/oauth2/auth?' + urllib.parse.urlencode(params)
+
     st.markdown(f'''
         <a href="{auth_url}" target="_self">
             <button style="
