@@ -71,9 +71,16 @@ def init_oauth_flow():
 def login_button():
     """Genera il bottone di Login per avviare il flusso OAuth."""
     flow = init_oauth_flow()
-    if not flow: return
+    if not flow:
+        st.error("❌ Impossibile inizializzare il flusso OAuth. Controlla i secrets (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET).")
+        return
 
     auth_url, _ = flow.authorization_url(prompt='consent', access_type='online')
+    
+    # DEBUG TEMPORANEO — mostra i primi caratteri dell'URL generato
+    with st.expander("🔍 Debug URL OAuth (rimuovere dopo il test)"):
+        st.code(auth_url[:200])
+    
     st.markdown(f'''
         <a href="{auth_url}" target="_self">
             <button style="
