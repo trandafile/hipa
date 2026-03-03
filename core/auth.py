@@ -92,11 +92,6 @@ def login_button():
 
     # Usa st.link_button nativo per evitare problemi di HTML escaping
     st.link_button("🔑 Accedi con Google", auth_url, use_container_width=False)
-    
-    # Fallback: link testuale con URL visibile per debug
-    with st.expander("⚙️ Mostra URL di accesso manuale"):
-        st.code(auth_url)
-        st.markdown(f"[Clicca qui per accedere direttamente]({auth_url})")
 
 def handle_oauth_callback():
     """Gesisce il ritorno da Google con il codice di autorizzazione nell'URL."""
