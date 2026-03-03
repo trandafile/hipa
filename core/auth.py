@@ -70,19 +70,16 @@ def init_oauth_flow():
     return flow
 
 def login_button():
-    """Genera il bottone di Login per avviare il flusso OAuth.
-    Costruisce l'URL manualmente per garantire che tutti i parametri siano corretti.
-    """
+    """Genera il bottone di Login per avviare il flusso OAuth."""
     import urllib.parse
-    
+
     client_id = get_secret("GOOGLE_CLIENT_ID")
     redirect_uri = get_secret("GOOGLE_REDIRECT_URI", "http://localhost:8501")
-    
+
     if not client_id:
         st.error("❌ GOOGLE_CLIENT_ID non trovato nei secrets.")
         return
 
-    # Costruzione manuale dell'URL per evitare bug della libreria con lo scope
     params = {
         'client_id': client_id,
         'redirect_uri': redirect_uri,
@@ -93,22 +90,13 @@ def login_button():
     }
     auth_url = 'https://accounts.google.com/o/oauth2/auth?' + urllib.parse.urlencode(params)
 
-    st.markdown(f'''
-        <a href="{auth_url}" target="_self">
-            <button style="
-                background-color: #4285F4;
-                color: white;
-                padding: 10px 24px;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 16px;
-                font-family: sans-serif;
-            ">
-                Accedi con Google
-            </button>
-        </a>
-    ''', unsafe_allow_html=True)
+    # Usa st.link_button nativo per evitare problemi di HTML escaping
+    st.link_button("🔑 Accedi con Google", auth_url, use_container_width=False)
+    
+    # Fallback: link testuale con URL visibile per debug
+    with st.expander("⚙️ Mostra URL di accesso manuale"):
+        st.code(auth_url)
+        st.markdown(f"[Clicca qui per accedere direttamente]({auth_url})")
 
 def handle_oauth_callback():
     """Gesisce il ritorno da Google con il codice di autorizzazione nell'URL."""
