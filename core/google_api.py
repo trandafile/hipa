@@ -64,7 +64,10 @@ class GoogleAPI:
         
         try:
             # 1. Recupera credenziali Service Account
+            # Supporta sia [gcp_service_account] (sezione TOML) che GOOGLE_SERVICE_ACCOUNT_JSON (stringa JSON)
             creds_info = get_secret("gcp_service_account")
+            if not creds_info:
+                creds_info = get_secret("GOOGLE_SERVICE_ACCOUNT_JSON")
             
             if creds_info:
                 if isinstance(creds_info, str):
