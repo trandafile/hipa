@@ -43,15 +43,16 @@ def init_oauth_flow():
         # Fallback manuale per sviluppo locale leggendo le singole variabili
         client_id = get_secret("GOOGLE_CLIENT_ID")
         client_secret = get_secret("GOOGLE_CLIENT_SECRET")
+        redirect_uri = get_secret("GOOGLE_REDIRECT_URI", "http://localhost:8501")
         if client_id and client_secret:
              client_config = {
                 "web": {
                     "client_id": client_id,
-                    "project_id": "hipa-ticketing",
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "auth_uri": "https://accounts.google.com/o/oauth2/v2/auth",
                     "token_uri": "https://oauth2.googleapis.com/token",
                     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
                     "client_secret": client_secret,
+                    "redirect_uris": [redirect_uri, "http://localhost:8501", "https://hipadimes.streamlit.app"],
                 }
              }
 
