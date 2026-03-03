@@ -5,12 +5,12 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import json
 
-# OAuth 2.0 Scopes per leggere le info dell'utente e permettere l'upload di file
+# OAuth 2.0 Scopes: solo info base dell'utente (nessuno scope sensibile)
+# Il drive viene gestito dal Service Account (google_api.py), non dall'utente
 SCOPES = [
     'openid',
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
-    'https://www.googleapis.com/auth/drive.file'
 ]
 
 def get_secret(key, default=None):
@@ -73,7 +73,7 @@ def login_button():
     flow = init_oauth_flow()
     if not flow: return
 
-    auth_url, _ = flow.authorization_url(prompt='consent')
+    auth_url, _ = flow.authorization_url(prompt='consent', access_type='online')
     st.markdown(f'''
         <a href="{auth_url}" target="_self">
             <button style="
